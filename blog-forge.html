@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Forge深度解析｜8B小模型Agent准确率从53%到99%的突破</title>
+<meta name="description" content="Forge开源框架让8B本地模型Agent准确率从53%飙升至99.3%，超过裸跑Claude Sonnet。5个核心技术解析：救援解析、重试提示、步骤强制、上下文压缩、合成回复工具。">
+<style>body{font-family:-apple-system,sans-serif;background:#0f0f0f;color:#e0e0e0;line-height:1.8;max-width:700px;margin:0 auto;padding:16px}
+h1{font-size:1.5em;color:#fff}h2{color:#667eea;margin:24px 0 12px;border-bottom:1px solid #2a2a3e;padding-bottom:6px}
+h3{color:#ccc}p{color:#b0c0b0;margin:8px 0}strong{color:#fff}
+table{width:100%;border-collapse:collapse;margin:12px 0}td,th{border:1px solid #2a2a3e;padding:8px}th{background:#1a1a2e;color:#667eea}td{color:#b0c0b0}
+code{background:#2a2a3e;padding:2px 6px;border-radius:4px;color:#667eea;font-size:.9em}
+.hl{background:#1a2e1a;border:1px solid #2a3e2a;border-radius:8px;padding:12px;margin:12px 0}
+.cta{text-align:center;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:10px;padding:20px;margin:20px 0}
+.cta a{color:#667eea;font-weight:700}</style></head>
+<body>
+<article>
+<h1>🔥 Forge：8B小模型Agent准确率从53%到99%的突破</h1>
+<p style="color:#888">MIT开源 | 德州仪器AI总监 | ACM论文 | HN 672分</p>
+
+<div class="hl"><strong style="color:#4ade80">核心数据：</strong>Ministral-3 8B 裸跑Agent任务 53% → 加上Forge 99.3%。同一个8B模型+Forge，准确率超过裸跑的Claude Sonnet（87.2%）。</div>
+
+<h2>为什么小模型做Agent总崩？</h2>
+<p>不是模型不行，是harness不行。90%的单步准确率，5步任务后整体只剩59%。Forge用5个机制逐一修这个复合衰减。</p>
+
+<h2>5个核心技术</h2>
+
+<h3>① Rescue Parsing（救援解析）</h3>
+<p>小模型经常输出非标准tool call格式：Mistral的<code>[TOOL_CALLS]</code>、Qwen的XML、包裹在代码块里的JSON。Forge识别并转换这些格式。</p>
+
+<h3>② Retry Nudges（重试提示）</h3>
+<p>格式错误时不抛异常，而是给模型精确的纠正提示：「你上一步输出格式不对，原因是X，请用正确格式重试」。给模型允许失败并重试的权利。</p>
+
+<h3>③ Step Enforcement（步骤强制）</h3>
+<p>定义<code>required_steps</code>，Forge追踪每一步完成状态。模型不能提前结束循环。</p>
+
+<h3>④ Tiered Context Compaction（分级上下文压缩）</h3>
+<p>最近2轮原样保留，更早的压缩摘要。VRAM感知，不超过GPU显存上限。</p>
+
+<h3>⑤ Synthetic Respond Tool（合成回复工具）★最巧妙</h3>
+<p>Forge注入虚拟<code>respond</code>工具，模型永远保持在tool-calling模式，不会因模式切换而出错。</p>
+
+<h2>实测对比</h2>
+<table><tr><th>配置</th><th>准确率</th></tr>
+<tr><td>Ministral-3 8B 裸跑</td><td>53%</td></tr>
+<tr><td>Ministral-3 8B + Forge</td><td>99.3%</td></tr>
+<tr><td>Claude Sonnet 裸跑</td><td>87.2%</td></tr>
+<tr><td>Claude Sonnet + Forge</td><td>~100%</td></tr></table>
+
+<h2>三种用法</h2>
+<p><strong>Proxy模式（最实用）：</strong><code>python -m forge.proxy</code>→OpenCode/aider/Cline指向代理，零代码改动。</p>
+<p><strong>WorkflowRunner：</strong>定义Workflow→选后端→跑Agent循环。</p>
+<p><strong>中间件：</strong>只用guardrails，自己管循环。</p>
+
+<h2>你需要什么硬件</h2>
+<p>Ministral-3 8B Q8需~10GB显存。RTX 3060 12GB就能跑。Mac M1/M2统一内存也行。</p>
+
+<h2>为什么要关注</h2>
+<p>这意味着：<strong>一台$600的二手显卡+Forge+8B模型 → Agent可靠性超过每月$200的Claude Sonnet API裸调用。</strong>对想跑本地Agent的人来说，这是game changer。</p>
+
+<p style="color:#888;font-size:.85em">GitHub: antoinezambelli/forge | 论文DOI: 10.1145/3786335.3813193</p>
+
+<div class="cta">
+<h3 style="color:#fff">🎯 更多AI工具深度内容</h3>
+<a href="/">返回AI生产力工具箱首页 →</a></div>
+</article>
+</body>
+</html>
