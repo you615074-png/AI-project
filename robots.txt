@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Sitemap: https://cheerful-fenglisu-ad0c4e.netlify.app/sitemap.xml
+
+# 禁止爬取收款码（隐私）
+Disallow: /qr.png
+Disallow: /qr-wechat.png
