@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Claude Code Dynamic Workflows 深度解读｜1,000子Agent并行编程，Bun 75万行Rust项目11天完成</title>
+<meta name="description" content="Anthropic 5月28日发布 Claude Opus 4.8 + Dynamic Workflows，支持1,000个并行子Agent。实测11天将Bun从Zig移植到Rust，通过99.8%测试。附详细使用教程和成本分析。">
+<style>body{font-family:-apple-system,sans-serif;background:#0f0f0f;color:#e0e0e0;line-height:1.8;max-width:700px;margin:0 auto;padding:16px}
+h1{font-size:1.5em;color:#fff}h2{color:#d4a574;margin:24px 0 12px;border-bottom:1px solid #2a2a3e;padding-bottom:6px}
+h3{color:#ccc;margin:16px 0 8px}p{color:#b0b0c0;margin:8px 0}
+strong{color:#fff}table{width:100%;border-collapse:collapse;margin:12px 0}td,th{border:1px solid #2a2a3e;padding:8px;font-size:.9em}th{background:#1a1a2e;color:#d4a574}td{color:#b0b0c0}
+.hl{background:#1a2e1a;border:1px solid #2a3e2a;border-radius:8px;padding:12px;margin:12px 0;color:#b0c0b0}
+.cta{text-align:center;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:10px;padding:20px;margin:20px 0}
+.cta a{color:#d4a574;font-weight:700}
+code{background:#1a1a2e;color:#d4a574;padding:2px 6px;border-radius:4px;font-size:.9em}
+pre{background:#1a1a2e;padding:12px;border-radius:8px;overflow-x:auto;color:#b0b0c0;font-size:.85em}
+.warn{background:#2e1a1a;border:1px solid #4a2a2a;border-radius:8px;padding:12px;margin:12px 0;color:#c0b0b0}</style></head>
+<body>
+<article>
+<h1>Claude Code Dynamic Workflows 深度解读</h1>
+<p style="color:#888">2026.5.31 · Claude Opus 4.8 · 1,000子Agent并行 · Bun 75万行移植案例</p>
+
+<h2>一句话总结</h2>
+<div class="hl">Anthropic 在 5 月 28 日发布了 Claude Code 有史以来最大的更新——<strong style="color:#fbbf24">Dynamic Workflows</strong>（动态工作流）。这不是普通的Agent升级，而是让AI能自己规划任务、拆解子任务、调度多达1,000个子Agent并行执行，最后汇总结果。Bun的创建者用它11天完成了从Zig到Rust的75万行代码移植，通过率99.8%。</div>
+
+<h2>什么是 Dynamic Workflows？</h2>
+<p>传统的AI对话是这样：你问 → 模型回答。再好一点：你给一个复杂任务 → 模型一步步完成。</p>
+
+<p>Dynamic Workflows 完全不一样：</p>
+<ul>
+<li>你描述一个大型任务 → Claude 自动规划</li>
+<li>它写一个 <strong>JavaScript 脚本</strong> 来编排子Agent</li>
+<li>运行时在后台执行脚本，<strong>你的会话保持响应</strong></li>
+<li>计划存在于脚本变量中，而不是Claude的上下文窗口里</li>
+<li>只有最终结果回到你的会话</li>
+</ul>
+
+<p>关键是：子Agent之间可以<strong>相互审查</strong>。一批Agent从不同角度解决问题，另一批Agent试图反驳它们的结论。迭代收敛后，结果经过验证才返回给你。</p>
+
+<h2>核心参数一览</h2>
+<table>
+<tr><th>参数</th><th>数值</th></tr>
+<tr><td>并发子Agent上限</td><td>16</td></tr>
+<tr><td>单次运行总Agent上限</td><td>1,000</td></tr>
+<tr><td>运行环境</td><td>CLI / Desktop / VS Code扩展</td></tr>
+<tr><td>API可用</td><td>Claude API / Bedrock / Vertex AI / Foundry</td></tr>
+<tr><td>计划载体</td><td>JavaScript脚本</td></tr>
+<tr><td>恢复机制</td><td>中断可恢复，已完成Agent返回缓存结果</td></tr>
+<tr><td>需要版本</td><td>Claude Code v2.1.154+</td></tr>
+</table>
+
+<h2>震撼案例：Bun从Zig移植到Rust</h2>
+<p>Dynamic Workflows 最令人震撼的实测案例来自 <strong>Bun 的作者 Jarred Sumner</strong>：</p>
+
+<div class="hl">
+<p>📊 <strong>75万行</strong> Rust 代码生成</p>
+<p>✅ <strong>99.8%</strong> 现有测试通过</p>
+<p>⏱️ <strong>11天</strong> 从首次提交到合并</p>
+<p>🤖 <strong>数百个</strong> Agent 并行工作，每个文件2个审阅Agent</p>
+</div>
+
+<p>具体流程：</p>
+<ol>
+<li><strong>第一步：</strong> 一个Workflow为每个struct字段映射正确的Rust生命周期</li>
+<li><strong>第二步：</strong> 另一个Workflow写出每个.rs文件作为行为一致的移植</li>
+<li><strong>第三步：</strong> 数百个Agent并行工作，每个文件配备2个审阅Agent</li>
+<li><strong>第四步：</strong> 自动修复循环驱动构建+测试，直到全部通过</li>
+</ol>
+
+<p>这个案例的意义在于：<strong>AI已经在做人类程序员需要几个月的架构级移植工作</strong>。11天、75万行、99.8%通过率——数据不会说谎。</p>
+
+<h2>Opus 4.8 与 Fast Mode</h2>
+<p>伴随 Dynamic Workflows 一同发布的还有 <strong>Claude Opus 4.8</strong>：</p>
+
+<table>
+<tr><th>特性</th><th>说明</th></tr>
+<tr><td>Opus 4.8 模型</td><td>最新旗舰，Agent能力大幅提升</td></tr>
+<tr><td>Fast Mode</td><td>2.5倍输出速度，智能水平不变</td></tr>
+<tr><td>Opus 4.8 Fast定价</td><td>比4.7/4.6便宜3倍</td></tr>
+<tr><td>Fast切换</td><td><code>/fast</code> 命令一键切换</td></tr>
+<tr><td>Ultracode模式</td><td>xhigh推理+自动Workflow编排</td></tr>
+</table>
+
+<h2>如何上手？三种触发方式</h2>
+
+<h3>方式一：关键词触发</h3>
+<p>在 Prompt 中包含 "workflow" 一词即可：</p>
+<pre>Run a workflow to audit every API endpoint under src/routes/ for missing auth checks</pre>
+
+<h3>方式二：Ultracode 模式</h3>
+<p>让Claude自行决定何时使用Workflow：</p>
+<pre>/effort ultracode</pre>
+
+<h3>方式三：内置 Deep Research</h3>
+<pre>/deep-research What changed in the Node.js permission model between v20 and v22?</pre>
+
+<h2>成本和注意事项</h2>
+
+<div class="warn">
+<p><strong>⚠️ 重要：成本会显著增加</strong></p>
+<p>Dynamic Workflows 和 Fast Mode 都会大幅消耗 Token。</p>
+<ul>
+<li>一次运行最多可启动1,000个Agent</li>
+<li>Fast Mode 按使用额度计费（不是套餐额度）</li>
+<li>建议先用小范围任务测试，观察用量后再扩展</li>
+<li>作为 Research Preview，定价和可用性可能变更</li>
+</ul>
+</div>
+
+<h2>竞争格局：谁在多Agent编排上领先？</h2>
+
+<table>
+<tr><th>产品</th><th>方案</th><th>门槛</th></tr>
+<tr><td><strong>Claude Code Dynamic Workflows</strong></td><td>自动规划→JS脚本→1,000子Agent并行→收敛验证</td><td>Max/Team/Enterprise</td></tr>
+<tr><td><strong>Google Gemini Spark</strong></td><td>24小时后台AI Agent，打通Gmail/Docs/Sheets</td><td>AI Ultra ($100/月)</td></tr>
+<tr><td><strong>Goose (开源)</strong></td><td>终端AI编程代理，功能对标Claude Code，免费</td><td>完全免费（可接DeepSeek）</td></tr>
+<tr><td><strong>GitHub Copilot CLI</strong></td><td>微软正在把团队拉到自家生态</td><td>Copilot订阅</td></tr>
+<tr><td><strong>Qwen3.7-Max</strong></td><td>阿里长周期Agent，支持35小时自主优化</td><td>API调用</td></tr>
+</table>
+
+<h2>对开发者的实际影响</h2>
+
+<p><strong>如果你用 Claude Code：</strong></p>
+<ul>
+<li>大型重构、代码迁移、全局Bug扫查——交给Workflow</li>
+<li>平时开发用 /fast 快速迭代，复杂任务切换到标准模式</li>
+<li>注意算力消耗，测试阶段建议限制范围</li>
+</ul>
+
+<p><strong>如果你还没用 AI 编程工具：</strong></p>
+<ul>
+<li>Claude Code 功能最强但价格最高（$200/月）</li>
+<li>免费方案：Goose + DeepSeek 组合，功能对标但完全免费</li>
+<li>学生方案：GitHub 学生包白嫖 Copilot Pro（省¥870/年）</li>
+<li>想系统学习AI工具选型？看下面的指南👇</li>
+</ul>
+
+<h2>Anthropic 的下一步是什么？</h2>
+<p>从估值$9,650亿（反超OpenAI）到Claude Opus 4.8，Anthropic正在走一条与OpenAI完全不同的路——不以聊天用户数为目标，而是咬死<strong>企业级Agent编排</strong>这块蛋糕。</p>
+<p>Deep Research、Dynamic Workflows、Opus 4.8、Claude Code——这一整套工具链的目标是：<strong>让AI替你干活，而不是替你聊天</strong>。</p>
+<p>下个版本会支持多少Agent？不再有上限？欢迎关注后续更新。</p>
+
+<div class="cta">
+<h3 style="color:#fff">🎯 更多AI工具深度内容</h3>
+<p style="color:#b0b0b0">AI订阅完全指南 · GitHub学生包申请 · Prompt模板包 · 简历优化</p>
+<a href="/">返回AI生产力工具箱首页 →</a>
+</div>
+</article>
+</body>
+</html>
